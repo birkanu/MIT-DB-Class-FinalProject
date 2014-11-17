@@ -1,7 +1,6 @@
 {
-  "name": "Node.js Getting Started",
-  "description": "A barebones Node.js app using Express 4",
-  "repository": "https://github.com/heroku/node-js-getting-started",
-  "logo": "http://node-js-sample.herokuapp.com/node.svg",
-  "keywords": ["node", "express", "static"]
+  "name": "MIT-DB-Class-FinalProject: Twitter Visualizations",
+  "description": "Node.js app using Express 4, Socket.io and D3.js to display Twitter Visualizations",
+  "repository": "https://github.com/birkanu/MIT-DB-Class-FinalProject",
+  "keywords": ["node", "heroku", "express", "socket.io", "d3.js"]
 }

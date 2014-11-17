@@ -1,7 +1,7 @@
 {
-  "name": "node-js-getting-started",
-  "version": "0.1.2",
-  "description": "A sample Node.js app using Express 4",
+  "name": "MIT-DB-Class-FinalProject",
+  "version": "0.0.1",
+  "description": "Node.js app using Express 4, Socket.io and D3.js to display Twitter Visualizations",
   "main": "index.js",
   "scripts": {
     "start": "node index.js"
@@ -14,12 +14,14 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/heroku/node-js-getting-started"
+    "url": "https://github.com/birkanu/MIT-DB-Class-FinalProject"
   },
   "keywords": [
     "node",
     "heroku",
-    "express"
+    "express",
+    "socket.io",
+    "d3.js"
   ],
   "license": "MIT"
 }
