@@ -4,13 +4,17 @@
     <title>Twitter Visualizations</title>
   </head>
   <body>
-    <script src="/socket.io/socket.io.js"></script>
+    <p>Apple Related Tweet Count: <span id='appleTweetCount'>0</span></p>
+    <p>Orange Related Tweet Count: <span id='orangeTweetCount'>0</span></p>
     <script src="http://code.jquery.com/jquery-1.11.1.js"></script>
+    <script src="/socket.io/socket.io.js"></script>
     <script>
-      var socket = io.connect('http://localhost');
-      socket.on('news', function (data) {
-        console.log(data);
-        socket.emit('my other event', { my: 'data' });
+      var socket = io();
+      socket.on('appleTweet', function(appleTweets){
+        $('#appleTweetCount').text(appleTweets.count);
+      });
+      socket.on('orangeTweet', function(orangeTweets){
+        $('#orangeTweetCount').text(orangeTweets.count);
       });
     </script>
   </body>
