@@ -13,10 +13,10 @@ app.get('/', function(req, res){
 
 var Twit = require('twit');  
 var T = new Twit({  
-  consumer_key: 'HbbEIcATMEM2SMVIWXbMefIyR',
-  consumer_secret: 'cdQ2Wq54XbF08tZ7EUjw1tmQDtFVowRGszr86BD4JnGzBOLFyV',
-  access_token: '1056098544-hQL3guqW6k6dqETspAYVrjDieJewzxTOqq73G5R',
-  access_token_secret: 'YUSIqPcU9dpXuD16QeI4mjflh3xH7QZ4FhW3NbVDn9Plh'
+  consumer_key: 'fklWWQROAC69xJX337Z8Tpoas',
+  consumer_secret: 'tfC8sodrY2G5ws5CHXscY4wFi8sB8o68E0FFCXeRSfFxN5m0A4',
+  access_token: '1056098544-N42lVlU0OTQWw5S2CtvLZzJoplyrMCDNwl0lPZV',
+  access_token_secret: 'O2f2Zu3xFuMK3Axk7GudKgqq2PFV8GCwDPLBYos3eht7O'
 });
 
 var io = require('socket.io')(http); 
@@ -38,6 +38,3 @@ io.on('connection', function (socket) {
     socket.emit('orangeTweet', { count: orangeTweetCount});
   });
 });
-
-
-
