@@ -2,7 +2,7 @@
 {{#if user}}
   <script src="/main.js"></script> 
   <input id="pac-input" class="controls" type="text" placeholder="Search Box">
-  <input type="submit" onclick="removeAllMarkers();" class="btn btn-primary deleteMarkersButton" value="Delete All Markers"/>
+  <input type="submit" onclick="removeAllMarkers();" class="btn btn-primary deleteMarkersButton" style="visibility: hidden;" value="Delete All Markers"/>
   <ul class="list-group marker-list" style="visibility: hidden;">
     <li class="list-group-item active">Marked Places</li>
   </ul>
