@@ -1,0 +1,100 @@
+html, body, #map-canvas {
+  height: 100%;
+  margin: 0px;
+  padding: 0px
+}
+
+.controls {
+  margin-top: 16px;
+  border: 1px solid transparent;
+  border-radius: 2px 0 0 2px;
+  box-sizing: border-box;
+  -moz-box-sizing: border-box;
+  height: 32px;
+  outline: none;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+}
+
+#pac-input {
+  background-color: #fff;
+  padding: 0 11px 0 13px;
+  width: 400px;
+  font-family: Roboto;
+  font-size: 15px;
+  font-weight: 300;
+  text-overflow: ellipsis;
+}
+
+#pac-input:focus {
+  border-color: #4d90fe;
+  margin-left: -1px;
+  padding-left: 14px;  /* Regular padding-left + 1. */
+  width: 401px;
+}
+
+.pac-container {
+  font-family: Roboto;
+}
+
+#type-selector {
+  color: #fff;
+  background-color: #4d90fe;
+  padding: 5px 11px 0px 11px;
+}
+
+#type-selector label {
+  font-family: Roboto;
+  font-size: 13px;
+  font-weight: 300;
+}
+
+.deleteMarkersButton {
+  position: absolute;
+  z-index: 5;
+  height: 32px;
+  left: 495px;
+  top: 16px;
+  border: 1px solid transparent;
+  border-radius: 0 2px 2px 0;
+  outline: none;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+}
+
+.list-group {
+  font-family: Roboto;
+  font-size: 14px;
+  font-weight: 300;
+  text-overflow: ellipsis;
+  position: absolute;
+  z-index: 5;
+  width: 200px;
+  border-radius: 0 0 0 0;
+  outline: none;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+  margin-top: 16px;
+  right: 20px;
+  max-height: 300px;
+  overflow: scroll;
+}
+
+.list-group-item:first-child {
+  text-align: center;
+  font-weight: 400;
+  vertical-align: middle;
+  font-size: 14px;
+  line-height: 1.42857143;
+}
+
+.list-group-item .glyphicon-remove {
+  float: right;
+  cursor: pointer;
+  color: black;
+}
+
+.logoutButton {
+  position: absolute;
+  z-index: 5;
+  left: 0;
+  bottom: 0;
+  margin: 3px;
+}

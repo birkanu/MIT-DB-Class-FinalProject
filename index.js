@@ -9,8 +9,8 @@ var express = require('express'),
     LocalStrategy = require('passport-local'),
     Twit = require('twit');
 
-var config = require('./config.js'), //config file contains all tokens and other private info
-    funct = require('./functions.js'); //funct file contains our helper functions for our Passport and database work
+var config = require('./config.js'), // config file contains all tokens and other private info
+    funct = require('./functions.js'); // funct file contains our helper functions for our Passport and database work
 
 var app = express();
 
@@ -35,12 +35,10 @@ passport.use('local-signin', new LocalStrategy(
     .then(function (user) {
       if (user) {
         console.log("LOGGED IN AS: " + user.username);
-        req.session.success = 'You are successfully logged in ' + user.username + '!';
         done(null, user);
       }
       if (!user) {
         console.log("COULD NOT LOG IN");
-        req.session.error = 'Could not log user in. Please try again.'; //inform user could not log them in
         done(null, user);
       }
     })
@@ -58,12 +56,10 @@ passport.use('local-signup', new LocalStrategy(
     .then(function (user) {
       if (user) {
         console.log("REGISTERED: " + user.username);
-        req.session.success = 'You are successfully registered and logged in ' + user.username + '!';
         done(null, user);
       }
       if (!user) {
         console.log("COULD NOT REGISTER");
-        req.session.error = 'That username is already in use, please try a different one.'; //inform user could not log them in
         done(null, user);
       }
     })
@@ -92,23 +88,6 @@ app.use(session({secret: 'supernova', saveUninitialized: true, resave: true}));
 app.use(passport.initialize());
 app.use(passport.session());
 app.use(express.static(__dirname + '/public'));
-
-// // Session-persisted message middleware
-// app.use(function(req, res, next){
-//   var err = req.session.error,
-//       msg = req.session.notice,
-//       success = req.session.success;
-
-//   delete req.session.error;
-//   delete req.session.success;
-//   delete req.session.notice;
-
-//   if (err) res.locals.error = err;
-//   if (msg) res.locals.notice = msg;
-//   if (success) res.locals.success = success;
-
-//   next();
-// });
 
 // Configure express to use handlebars templates
 var hbs = exphbs.create({
@@ -165,22 +144,15 @@ var T = new Twit({
   access_token_secret: config.twitter.accessTokenSecret
 });
 
-var io = require('socket.io')(http); 
+// var io = require('socket.io')(http); 
 
-// filter the public stream by english tweets containing `#apple`
-var appleStream = T.stream('statuses/filter', { track: '#apple', language: 'en' });
-// filter the public stream by english tweets containing `#apple`
-var orangeStream = T.stream('statuses/filter', { track: '#orange', language: 'en' });
+// // filter the public stream by english tweets containing `#apple`
+// var appleStream = T.stream('statuses/filter', { track: '#apple', language: 'en' });
 
-io.on('connection', function (socket) { 
-  var appleTweetCount = 0;
-  var orangeTweetCount = 0;
-  appleStream.on('tweet', function(tweet) {
-  	appleTweetCount += 1;
-    socket.emit('appleTweet', { count: appleTweetCount});
-  });
-  orangeStream.on('tweet', function(tweet) {
-    orangeTweetCount += 1;
-    socket.emit('orangeTweet', { count: orangeTweetCount});
-  });
-});
+// io.on('connection', function (socket) { 
+//   var appleTweetCount = 0;
+//   appleStream.on('tweet', function(tweet) {
+//   	appleTweetCount += 1;
+//     socket.emit('appleTweet', { count: appleTweetCount});
+//   });
+// });

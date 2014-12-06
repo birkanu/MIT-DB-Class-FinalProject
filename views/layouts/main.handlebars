@@ -1,90 +1,22 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <meta name="viewport" content="initial-scale=1.0, user-scalable=no">
   <meta charset="utf-8">
   <title>Twitter Visualizations</title>
+  <!-- Load the CSS -->
   <link rel="stylesheet" href="//netdna.bootstrapcdn.com/bootstrap/3.1.1/css/bootstrap.min.css">
-  <style>
-    .axis path,
-    .axis line {
-      fill: none;
-      stroke: #000;
-      shape-rendering: crispEdges;
-    }
-
-    .bar {
-      fill: orange;
-    }
-
-    .bar:hover {
-      fill: orangered ;
-    }
-  </style>
-  </head>
-
-  <body>
-
-    <div class="container">
-
-      <nav class="navbar navbar-default" role="navigation">
-      <div class="container-fluid">
-
-      <!-- Brand and toggle get grouped for better mobile display -->
-      <div class="navbar-header">
-        <button type="button" class="navbar-toggle" data-toggle="collapse" data-target="#bs-example-navbar-collapse-1">
-          <span class="sr-only">Toggle navigation</span>
-          <span class="icon-bar"></span>
-          <span class="icon-bar"></span>
-          <span class="icon-bar"></span>
-        </button>
-      </div>
-
-        <!-- Collect the nav links, forms, and other content for toggling -->
-        <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1">
-          <ul class="nav navbar-nav">
-            <li>
-              {{#if user}}
-                </li>
-                </ul>
-                <ul class="nav navbar-nav navbar-right">
-                  <li>
-                    <a href="/logout">Log Out</a>
-                  </li>
-              {{else}}
-                <a href="/signin">Sign In</a>
-                </li>
-              {{/if}}
-          </ul>
-        </div><!-- /.navbar-collapse -->
-      </div><!-- /.container-fluid -->
-    </nav>
-
-      
-    {{#if error}}
-      <p class="alert alert-warning">{{error}}</p>
-    {{/if}}
-
-    {{#if success}}
-      <p class="alert alert-success">{{success}}</p>
-    {{/if}}
-
-    {{#if notice}}
-      <p class="alert alert-info">{{notice}}</p>
-    {{/if}}
-
-    <!--where our other templates will insert-->
-    {{{body}}}
-      
-
-    </div> <!-- /container -->
-
-
-    <!-- Bootstrap core JavaScript
-    ================================================== -->
-    <!-- Placed at the end of the document so the pages load faster -->
-    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.0/jquery.min.js"></script>
-
-    <!-- Latest compiled and minified JavaScript -->
+  <link rel="stylesheet" href="/main.css">
+  <!-- Load the JavaScript -->
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.0/jquery.min.js"></script>
+  <script src="https://cdn.socket.io/socket.io-1.2.1.js"></script>
+  <script src="https://maps.googleapis.com/maps/api/js?v=3.exp&libraries=places"></script>
   <script src="//netdna.bootstrapcdn.com/bootstrap/3.1.1/js/bootstrap.min.js"></script>
+</head>
+<body>
+  {{#if user}}
+    <a href="/logout" class="btn btn-primary btn-sm logoutButton" role="button">Log Out</a>
+  {{/if}}
+  {{{body}}}
 </body>
 </html>

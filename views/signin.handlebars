@@ -1,23 +1,22 @@
 <!-- views/signin.handlebars -->
 <div class="jumbotron">
   <p>
-    <a data-toggle="collapse" href="#local" class="btn btn-warning btn-lg" role="button"><span class="glyphicon glyphicon-user"></span> Sign In Locally</a>
+    <a data-toggle="collapse" href="#local" class="btn btn-primary btn-lg" role="button"><span class="glyphicon glyphicon-user"></span>  Sign In to View Twitter Visualizations</a>
   </p>
-
   <div id="local" class="collapse">
-    <a data-toggle="collapse" href="#local-sign-in" class="btn btn-default btn-md" role="button">I already have an account</a>
-    <a data-toggle="collapse" href="#local-reg" class="btn btn-default btn-md" role="button">I need to make an account</a>
+    <a data-toggle="collapse" href="#local-sign-in" class="btn btn-default btn-md" role="button">I already have an account.</a>
+    <a data-toggle="collapse" href="#local-reg" class="btn btn-default btn-md" role="button">I need to make an account.</a>
   </div>
 
   <form id="local-sign-in" class="collapse" action="/login" method="post">
-    <div>
-        <p></p>
-        <label>Username:</label>
-        <input type="text" name="username"/>
+    <p></p>
+    <div class="form-group">
+      <label for="usernameInput">Username:</label>
+      <input type="text" class="form-control" name="username" id="usernameInput" placeholder="Enter Username">
     </div>
-    <div>
-        <label>Password:</label>
-        <input type="password" name="password"/>
+    <div class="form-group">
+      <label for="passwordInput">Password:</label>
+      <input type="password" class="form-control" name="password" id="passwordInput" placeholder="Enter Password">
     </div>
     <div>
         <input type="submit" class="btn btn-primary btn-sm" value="Log In"/>
@@ -25,14 +24,14 @@
   </form>
 
   <form id="local-reg" class="collapse" action="/local-reg" method="post">
-    <div>
-        <p></p>
-        <label>New Username:</label>
-        <input type="text" name="username"/>
+    <p></p>
+    <div class="form-group">
+      <label for="usernameInput">New Username:</label>
+      <input type="text" class="form-control" name="username" id="usernameInput" placeholder="Enter New Username">
     </div>
-    <div>
-        <label>New Password:</label>
-        <input type="password" name="password"/>
+    <div class="form-group">
+      <label for="passwordInput">New Password:</label>
+      <input type="password" class="form-control" name="password" id="passwordInput" placeholder="Enter New Password">
     </div>
     <div>
         <input type="submit" class="btn btn-primary btn-sm" value="Register"/>
