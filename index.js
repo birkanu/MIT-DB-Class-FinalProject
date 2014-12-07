@@ -7,7 +7,12 @@ var express = require('express'),
     session = require('express-session'),
     passport = require('passport'),
     LocalStrategy = require('passport-local'),
-    Twit = require('twit');
+    redis = require('redis');
+
+var client = redis.createClient(6379, 'localhost', {})
+client.on("error", function (err) {
+    console.log("Redis Error: " + err);
+});
 
 var config = require('./config.js'), // config file contains all tokens and other private info
     funct = require('./functions.js'); // funct file contains our helper functions for our Passport and database work
@@ -135,24 +140,31 @@ app.get('/logout', function(req, res){
 var port = process.env.PORT || 5000; //select your port or let it pull from your .env file
 var http = require('http').Server(app); 
 http.listen(port);
-console.log("listening on " + port + "!");
-  
-var T = new Twit({  
-  consumer_key: config.twitter.consumerKey,
-  consumer_secret: config.twitter.consumerSecret,
-  access_token: config.twitter.accessToken,
-  access_token_secret: config.twitter.accessTokenSecret
+console.log("Listening on port: " + port);
+
+var io = require('socket.io')(http); 
+io.on('connection', function (socket) { 
+  // Read the DB and Send Marker Info to the Client
+  client.smembers("fences", function(err, markerUIDs) {
+    if (markerUIDs != null && markerUIDs.length > 0) {
+      markerUIDs.forEach(function (markerUID, i) {
+        client.get(markerUID, function(err, info) {
+          var marker = {};
+          var markerInfo = info.split('|');
+          marker.lat = markerInfo[0];
+          marker.lng = markerInfo[1];
+          marker.radius = parseInt(markerInfo[2]) * 1000;
+          marker.type = markerInfo[3];
+          marker.id = markerUID;
+          socket.emit('load marker', marker);
+        });
+      });
+    }
+  });
+  socket.on('count request', function(request){
+    console.log(request);
+  });
+  socket.on('trend request', function(request){
+    console.log(request);
+  });
 });
-
-// var io = require('socket.io')(http); 
-
-// // filter the public stream by english tweets containing `#apple`
-// var appleStream = T.stream('statuses/filter', { track: '#apple', language: 'en' });
-
-// io.on('connection', function (socket) { 
-//   var appleTweetCount = 0;
-//   appleStream.on('tweet', function(tweet) {
-//   	appleTweetCount += 1;
-//     socket.emit('appleTweet', { count: appleTweetCount});
-//   });
-// });

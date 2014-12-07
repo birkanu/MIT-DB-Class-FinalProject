@@ -1,12 +1,16 @@
 var map;
 var markers = {};
 var circles = {};
+var containers = {};
 var geocoder = new google.maps.Geocoder();
 
 // Removes given circle from map.
 var removeCircle = function(circleUID) {
   var circle = circles[circleUID];
+  var container = containers[circleUID];
+  container.close();
   circle.setMap(null);
+  delete containers[circleUID];
   delete circles[circleUID]; 
 };
 
@@ -36,6 +40,11 @@ var getCircleUID = function(lat, lng) {
   return 'circle_' + lat + '_' + lng;
 };
 
+// Generates a UID for each marker's info container.
+var getInfoContainerUID = function(lat, lng) {
+  return 'container_' + lat + '_' + lng;
+};
+
 // Adds marker to the Marked Places list
 var addMarkerToPlacesList = function(marker) {
   if (Object.keys(markers).length !== 0) {
@@ -58,6 +67,20 @@ var removeMarkerFromPlacesList = function(markerUID) {
   markerListElement.remove();
 };
 
+var getInfoContainerContent = function(marker, circle) {
+  var content = '<div class="infoContainer" id="' + getInfoContainerUID(marker.position.lat(), marker.position.lng()) + '">' + 
+                '<p class="containerHeader">' + 
+                  '<span class="containerTitle">Place: ' + marker.title + ', </span>' + 
+                  '<span class="containerRadius"> Radius: ' + Math.round(circle.getRadius() / 1000) + ' km </span>' +
+                '</p>' + 
+                '<div class="btn-group" role="group" aria-label="...">' +
+                  '<button type="button" class="btn btn-default" onclick="getTweetCount(\'' + marker.id + '\')">Get Tweet Count</button>' +
+                  '<button type="button" class="btn btn-default" onclick="getTweetTrends(\'' + marker.id + '\')">Get Trending Tweet Topics</button>' + 
+                '</div>' +
+              '</div>';
+  return content;
+};
+
 var drawCircleForMarker = function(map, marker) {
   var position = marker.position;
   var circleUID = marker.circle_id;
@@ -70,11 +93,25 @@ var drawCircleForMarker = function(map, marker) {
     map: map,
     center: position,
     radius: 200000,
-    editable: true
+    editable: true,
+    clickable: true
   };
   // Add the circle for this city to the map.
   var circle = new google.maps.Circle(circleOptions);
   circle.bindTo('center', marker, 'position');
+  // Create info window
+  var infoWindow = new google.maps.InfoWindow({
+    content:  getInfoContainerContent(marker, circle)
+  });
+  containers[circleUID] = infoWindow;
+  google.maps.event.addListener(circle, 'click', function(ev){
+    infoWindow.setPosition(ev.latLng);
+    infoWindow.open(map);
+  });
+  google.maps.event.addListener(circle, 'radius_changed', function(ev){
+    var container = containers[circleUID];
+    container.setContent(getInfoContainerContent(marker, circle)); 
+  });
   circles[circleUID] = circle;
 };
 
@@ -85,6 +122,10 @@ var updatePlaceName = function(marker) {
         var newMarkerTitle = results[1].formatted_address;
         marker.title = newMarkerTitle;
         document.getElementById(marker.id).innerHTML = newMarkerTitle + '<span class="glyphicon glyphicon-remove" onclick="removeMarkerFromPlacesList(\'' + marker.id + '\')"></span>';
+        // Update Info Container content
+        var circle = circles[marker.circle_id];
+        var container = containers[marker.circle_id];
+        container.setContent(getInfoContainerContent(marker, circle));    
       } else {
         alert('No results found');
       }
@@ -119,11 +160,13 @@ var initialize = function() {
       var position = place.geometry.location;
       var markerUID = getMarkerUID(position.lat(), position.lng());
       var circleUID = getCircleUID(position.lat(), position.lng());
+      var infoContainerUID = getInfoContainerUID(position.lat(), position.lng());
       // Create a marker for each place.
       var marker = new google.maps.Marker({
         map: map,
         id: markerUID,
         circle_id: circleUID,
+        container_id : infoContainerUID,
         title: place.name,
         position: position,
         draggable: true
@@ -153,19 +196,41 @@ var initialize = function() {
   });
 }
 
-$( document ).ready(function() {
-  // Initialize Google Maps
-  google.maps.event.addDomListener(window, 'load', initialize);
-  
-  //------------------------------------------------
-  // Initialize Socket IO
-  //var socket = io();
-  // socket.on('appleTweet', function(appleTweets){
-  //  $('#appleTweetCount').text(appleTweets.count);
-  // });
-  //------------------------------------------------
+// Initialize Google Maps
+google.maps.event.addDomListener(window, 'load', initialize);
 
-  $(".glyphicon-remove").click(function() {
+// Initialize Socket IO
+var socket = io();
 
-  })
+// Load marker that already exists in the database
+socket.on('load marker', function(marker) {
+  console.log(marker);
 });
+
+var getTweetCount = function(markerUID) {
+  // TODO: make it the marker undraggable and uneditable
+  // Make button unclickable, and the other one clickable 
+  var marker = markers[markerUID];
+  var request = {};
+  request.type = "create";
+  request.feature = "count";
+  request.id = marker.id;
+  request.lat = marker.position.lat();
+  request.lon = marker.position.lng();
+  request.radius_km = Math.round(circles[marker.circle_id].getRadius() / 1000);
+  socket.emit('count request', request);
+};
+
+var getTweetTrends = function(markerUID) {
+  // TODO: make it the marker undraggable and uneditable
+  // Make button unclickable, and the other one clickable
+  var marker = markers[markerUID];
+  var request = {};
+  request.type = "create";
+  request.feature = "trend";
+  request.id = marker.id;
+  request.lat = marker.position.lat();
+  request.lon = marker.position.lng();
+  request.radius_km = Math.round(circles[marker.circle_id].getRadius() / 1000);
+  socket.emit('trend request', request);
+};
