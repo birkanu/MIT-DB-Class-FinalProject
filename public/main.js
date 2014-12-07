@@ -3,6 +3,18 @@ var markers = {};
 var circles = {};
 var containers = {};
 var geocoder = new google.maps.Geocoder();
+var socket = io();
+
+
+// Generate a UUID for a marker.
+var getUUID = (function() {
+  function s4() {
+    return Math.floor((1 + Math.random()) * 0x10000).toString(16).substring(1);
+  }
+  return function() {
+    return s4() + s4() + '-' + s4() + '-' + s4() + '-' + s4() + '-' + s4() + s4() + s4();
+  };
+})();
 
 // Removes given circle from map.
 var removeCircle = function(circleUID) {
@@ -15,34 +27,29 @@ var removeCircle = function(circleUID) {
 };
 
 // Removes given marker from map.
-var removeMarker = function(markerUID) {
-  var marker = markers[markerUID];
+var removeMarker = function(markerUUID) {
+  var marker = markers[markerUUID];
   marker.setMap(null); // set markers setMap to null to remove it from map
-  delete markers[markerUID]; // delete marker instance from markers object
-  removeCircle(marker.circle_id);
+  delete markers[markerUUID]; // delete marker instance from markers object
+  removeCircle(marker.id);
+};
+
+// Removes marker from the Marked Places list
+var removeMarkerFromPlacesList = function(markerUUID) {
+  removeMarker(markerUUID);
+  if (Object.keys(markers).length === 0) {
+    $('.marker-list').css('visibility', 'hidden');
+    $('.deleteMarkersButton').css('visibility', 'hidden');
+  }
+  var markerListElement = document.getElementById(markerUUID.trim());
+  markerListElement.remove();
 };
 
 // Removes all markers from map.
 var removeAllMarkers = function() {
-  $.each(markers, function (markerUID, marker) {
-    removeMarkerFromPlacesList(markerUID);
+  $.each(markers, function (markerUUID, marker) {
+    removeMarkerFromPlacesList(markerUUID);
   });
-};
-
-// Concatenates given lat and lng with an underscore and returns it.
-// This UID will be used as a key of marker to cache the marker in markers object.
-var getMarkerUID = function(lat, lng) {
-  return 'marker_' + lat + '_' + lng;
-}; 
-
-// Generates a UID for circles for each marker.
-var getCircleUID = function(lat, lng) {
-  return 'circle_' + lat + '_' + lng;
-};
-
-// Generates a UID for each marker's info container.
-var getInfoContainerUID = function(lat, lng) {
-  return 'container_' + lat + '_' + lng;
 };
 
 // Adds marker to the Marked Places list
@@ -51,39 +58,38 @@ var addMarkerToPlacesList = function(marker) {
     $('.marker-list').css('visibility', 'visible');
     $('.deleteMarkersButton').css('visibility', 'visible');
   }
-  $('.marker-list').append('<li class="list-group-item" id="' + marker.id + '">' + 
-    marker.title + 
+  $('.marker-list').append('<li class="list-group-item" id="' + marker.id + '">' + marker.title + 
     '<span class="glyphicon glyphicon-remove" onclick="removeMarkerFromPlacesList(\'' + marker.id + '\')"></span></li>');
 };
 
-// Removes marker from the Marked Places list
-var removeMarkerFromPlacesList = function(markerUID) {
-  removeMarker(markerUID);
-  if (Object.keys(markers).length === 0) {
-    $('.marker-list').css('visibility', 'hidden');
-    $('.deleteMarkersButton').css('visibility', 'hidden');
+// Generates content for the info container
+var getInfoContainerContent = function(marker, circle, feature) {
+  var content = '<div class="infoContainer" id="container_' + marker.id + '">' + 
+                  '<p class="containerHeader">' + 
+                    '<span class="containerTitle">Place: ' + marker.title + ', </span>' + 
+                    '<span class="containerRadius"> Radius: ' + Math.round(circle.getRadius() / 1000) + ' km </span>' +
+                  '</p>' + 
+                  '<div class="btn-group" role="group" aria-label="...">'; 
+  if (feature === "trend") {
+    content +=  '<button type="button" class="btn btn-default" onclick="getTweetCount(\'' + marker.id + '\')">Get Tweet Count</button>' +
+                '<button type="button" class="btn btn-default" disabled="disabled">Get Trending Tweet Topics</button>';
+  } else if (feature === "count") {
+    content +=  '<button type="button" class="btn btn-default" disabled="disabled">Get Tweet Count</button>' +
+                '<button type="button" class="btn btn-default" onclick="getTweetTrends(\'' + marker.id + '\')">Get Trending Tweet Topics</button>';
+  } else {
+    content +=  '<button type="button" class="btn btn-default" onclick="getTweetCount(\'' + marker.id + '\')">Get Tweet Count</button>' +
+                '<button type="button" class="btn btn-default" onclick="getTweetTrends(\'' + marker.id + '\')">Get Trending Tweet Topics</button>';
   }
-  var markerListElement = document.getElementById(markerUID.trim());
-  markerListElement.remove();
-};
-
-var getInfoContainerContent = function(marker, circle) {
-  var content = '<div class="infoContainer" id="' + getInfoContainerUID(marker.position.lat(), marker.position.lng()) + '">' + 
-                '<p class="containerHeader">' + 
-                  '<span class="containerTitle">Place: ' + marker.title + ', </span>' + 
-                  '<span class="containerRadius"> Radius: ' + Math.round(circle.getRadius() / 1000) + ' km </span>' +
-                '</p>' + 
-                '<div class="btn-group" role="group" aria-label="...">' +
-                  '<button type="button" class="btn btn-default" onclick="getTweetCount(\'' + marker.id + '\')">Get Tweet Count</button>' +
-                  '<button type="button" class="btn btn-default" onclick="getTweetTrends(\'' + marker.id + '\')">Get Trending Tweet Topics</button>' + 
-                '</div>' +
-              '</div>';
+  content += '</div></div>';
   return content;
 };
 
-var drawCircleForMarker = function(map, marker) {
-  var position = marker.position;
-  var circleUID = marker.circle_id;
+// Draws a circle around a marker
+var drawCircleForMarker = function(marker, radius, feature) {
+  var isEditable = true;
+  if (feature) {
+    isEditable = false;
+  }
   var circleOptions = {
     strokeColor: '#FF0000',
     strokeOpacity: 0.8,
@@ -91,48 +97,87 @@ var drawCircleForMarker = function(map, marker) {
     fillColor: '#FF0000',
     fillOpacity: 0.35,
     map: map,
-    center: position,
-    radius: 200000,
-    editable: true,
+    center: marker.position,
+    radius: radius,
+    editable: isEditable,
     clickable: true
   };
   // Add the circle for this city to the map.
   var circle = new google.maps.Circle(circleOptions);
   circle.bindTo('center', marker, 'position');
-  // Create info window
+  // Create info window for circle
   var infoWindow = new google.maps.InfoWindow({
-    content:  getInfoContainerContent(marker, circle)
+    content:  getInfoContainerContent(marker, circle, feature)
   });
-  containers[circleUID] = infoWindow;
   google.maps.event.addListener(circle, 'click', function(ev){
     infoWindow.setPosition(ev.latLng);
     infoWindow.open(map);
   });
   google.maps.event.addListener(circle, 'radius_changed', function(ev){
-    var container = containers[circleUID];
+    var container = containers[marker.id];
     container.setContent(getInfoContainerContent(marker, circle)); 
   });
-  circles[circleUID] = circle;
+  // Add the container to containers map
+  containers[marker.id] = infoWindow;
+  // Add the circle to circless map
+  circles[marker.id] = circle;
+};
+
+var getTitleFromGeoCode = function(position, fn) {
+  geocoder.geocode({'latLng': position}, function(results, status) {
+    if (status == google.maps.GeocoderStatus.OK) {
+      if (results[1]) {
+        fn(results[1].formatted_address);  
+      } else {
+        console.log('No results found');
+      }
+    } else {
+      console.log('Geocoder failed due to: ' + status);
+    }
+  });
 };
 
 var updatePlaceName = function(marker) {
-  geocoder.geocode({'latLng': marker.position}, function(results, status) {
-    if (status == google.maps.GeocoderStatus.OK) {
-      if (results[1]) {
-        var newMarkerTitle = results[1].formatted_address;
-        marker.title = newMarkerTitle;
-        document.getElementById(marker.id).innerHTML = newMarkerTitle + '<span class="glyphicon glyphicon-remove" onclick="removeMarkerFromPlacesList(\'' + marker.id + '\')"></span>';
-        // Update Info Container content
-        var circle = circles[marker.circle_id];
-        var container = containers[marker.circle_id];
-        container.setContent(getInfoContainerContent(marker, circle));    
-      } else {
-        alert('No results found');
-      }
-    } else {
-      alert('Geocoder failed due to: ' + status);
-    }
+  var newMarkerTitle;
+  getTitleFromGeoCode(marker.position, function(title) {
+    newMarkerTitle = title;
+    if (newMarkerTitle) {
+      marker.title = newMarkerTitle;
+      document.getElementById(marker.id).innerHTML = newMarkerTitle + 
+      '<span class="glyphicon glyphicon-remove" onclick="removeMarkerFromPlacesList(\'' + marker.id + '\')"></span>';
+      // Update Info Container content
+      var circle = circles[marker.id];
+      var container = containers[marker.id];
+      container.setContent(getInfoContainerContent(marker, circle));   
+    }  
   });
+};
+
+// Generate Marker DOM
+var generateMarker = function(UUID, title, position, radius, feature) {
+  // Check if marker should be draggable
+  var isDraggable = true;
+  if (feature) {
+    isDraggable = false;
+  }
+  // Create the marker object.
+  var marker = new google.maps.Marker({
+    map: map,
+    id: UUID,
+    title: title,
+    position: position,
+    draggable: isDraggable
+  });
+  // Add event listener for marker to update new position
+  google.maps.event.addListener(marker, 'dragend', function() {
+    updatePlaceName(marker);
+  });
+  // Add the marker to markers map
+  markers[marker.id] = marker;
+  // Add marker to the Marked Places List on the UI.
+  addMarkerToPlacesList(marker);
+  // Draw circle around the marker.
+  drawCircleForMarker(marker, radius, feature);
 }
 
 // Initializes the map and listens for marker additions.
@@ -157,29 +202,13 @@ var initialize = function() {
     // For each place, get the icon, place name, and location.
     var bounds = new google.maps.LatLngBounds();
     for (var i = 0, place; place = places[i]; i++) {
+      var UUID = getUUID();
+      var title = place.name;
       var position = place.geometry.location;
-      var markerUID = getMarkerUID(position.lat(), position.lng());
-      var circleUID = getCircleUID(position.lat(), position.lng());
-      var infoContainerUID = getInfoContainerUID(position.lat(), position.lng());
-      // Create a marker for each place.
-      var marker = new google.maps.Marker({
-        map: map,
-        id: markerUID,
-        circle_id: circleUID,
-        container_id : infoContainerUID,
-        title: place.name,
-        position: position,
-        draggable: true
-      });
-      google.maps.event.addListener(marker,'dragend',function() {
-        updatePlaceName(marker);
-      });
-      markers[marker.id] = marker;
-      addMarkerToPlacesList(marker);
-      drawCircleForMarker(map, marker);
+      generateMarker(UUID, title, position, 200000);
       bounds.extend(position);
     }
-    // This is needed to set the zoom after fitbounds.
+    // Set the zoom after fitbounds.
     google.maps.event.addListener(map, 'zoom_changed', function() {
         zoomChangeBoundsListener = 
             google.maps.event.addListener(map, 'bounds_changed', function(event) {
@@ -199,12 +228,21 @@ var initialize = function() {
 // Initialize Google Maps
 google.maps.event.addDomListener(window, 'load', initialize);
 
-// Initialize Socket IO
-var socket = io();
-
 // Load marker that already exists in the database
 socket.on('load marker', function(marker) {
-  console.log(marker);
+  var bounds = new google.maps.LatLngBounds();
+  var UUID = marker.id;
+  var position = new google.maps.LatLng(marker.lat, marker.lng);
+  var radius = marker.radius;
+  var feature = marker.type;
+  getTitleFromGeoCode(position, function(title) {
+    var title = title;
+    if (title) {
+      generateMarker(UUID, title, position, radius, feature);
+      map.setZoom(3);
+      map.panTo(markers[UUID].position); 
+    } 
+  });
 });
 
 var getTweetCount = function(markerUID) {
@@ -217,7 +255,7 @@ var getTweetCount = function(markerUID) {
   request.id = marker.id;
   request.lat = marker.position.lat();
   request.lon = marker.position.lng();
-  request.radius_km = Math.round(circles[marker.circle_id].getRadius() / 1000);
+  request.radius_km = Math.round(circles[marker.id].getRadius() / 1000);
   socket.emit('count request', request);
 };
 
@@ -231,6 +269,6 @@ var getTweetTrends = function(markerUID) {
   request.id = marker.id;
   request.lat = marker.position.lat();
   request.lon = marker.position.lng();
-  request.radius_km = Math.round(circles[marker.circle_id].getRadius() / 1000);
+  request.radius_km = Math.round(circles[marker.id].getRadius() / 1000);
   socket.emit('trend request', request);
 };

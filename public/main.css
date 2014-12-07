@@ -91,6 +91,10 @@ html, body, #map-canvas {
   color: black;
 }
 
+.infoContainer {
+  min-height: 100px;
+}
+
 .infoContainer .containerHeader {
   font-family: Roboto;
   font-size: 15px;
