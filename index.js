@@ -7,20 +7,21 @@ var express = require('express'),
     session = require('express-session'),
     passport = require('passport'),
     LocalStrategy = require('passport-local'),
+    config = require('./config.js'),
     Redis = require('redis');
 
-var redis = Redis.createClient(6379, 'localhost', {})
+var redis = Redis.createClient(6379, config.redis, {})
 redis.on("error", function (err) {
     console.log("Redis Error: " + err);
 });
 
 var kafka = require('kafka-node'),
     Consumer = kafka.Consumer,
-    client = new kafka.Client('localhost:2181'),
+    client = new kafka.Client(config.kafka),
     consumer = new Consumer(
         client,
         [
-            { topic: 'results-sample', partition: 0 }
+            { topic: 'results', partition: 0 }
         ],
         {
             autoCommit: true
