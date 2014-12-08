@@ -92,7 +92,8 @@ html, body, #map-canvas {
 }
 
 .infoContainer {
-  min-height: 100px;
+  min-height: 80px;
+  min-width: 350px;
 }
 
 .infoContainer .containerHeader {

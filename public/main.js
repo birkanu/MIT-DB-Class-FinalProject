@@ -31,6 +31,7 @@ var removeMarker = function(markerUUID) {
   var marker = markers[markerUUID];
   marker.setMap(null); // set markers setMap to null to remove it from map
   delete markers[markerUUID]; // delete marker instance from markers object
+  socket.emit('remove marker request', markerUUID);
   removeCircle(marker.id);
 };
 
@@ -63,24 +64,35 @@ var addMarkerToPlacesList = function(marker) {
 };
 
 // Generates content for the info container
-var getInfoContainerContent = function(marker, circle, feature) {
+var getInfoContainerContent = function(marker, circle, feature, result) {
   var content = '<div class="infoContainer" id="container_' + marker.id + '">' + 
                   '<p class="containerHeader">' + 
                     '<span class="containerTitle">Place: ' + marker.title + ', </span>' + 
                     '<span class="containerRadius"> Radius: ' + Math.round(circle.getRadius() / 1000) + ' km </span>' +
-                  '</p>' + 
-                  '<div class="btn-group" role="group" aria-label="...">'; 
-  if (feature === "trend") {
-    content +=  '<button type="button" class="btn btn-default" onclick="getTweetCount(\'' + marker.id + '\')">Get Tweet Count</button>' +
-                '<button type="button" class="btn btn-default" disabled="disabled">Get Trending Tweet Topics</button>';
+                  '</p>';
+  if (feature === "trend" && result) {
+    content +=  '<div class="alert alert-info" role="alert" id="tweetTrends_' + marker.id + '">' + 
+                '<strong>Trending Tweet Topics: </strong><span class="realtimeTrends">' + ' ' + result + '</span>' + 
+                '</div>'; 
+  } else if (feature === "count" && result) {
+    content +=  '<div class="alert alert-info" role="alert" id="tweetCount_' + marker.id + '">' + 
+                '<strong>Tweet Count: </strong><span class="realtimeCount">' + ' ' + result + '</span>' + 
+                '</div>'; 
+  } else if (feature === "trend") {
+    content +=  '<div class="alert alert-info" role="alert" id="tweetTrends_' + marker.id + '">' + 
+                '<strong>Trending Tweet Topics: </strong><span class="realtimeTrends">Loading...</span>' + 
+                '</div>'; 
   } else if (feature === "count") {
-    content +=  '<button type="button" class="btn btn-default" disabled="disabled">Get Tweet Count</button>' +
-                '<button type="button" class="btn btn-default" onclick="getTweetTrends(\'' + marker.id + '\')">Get Trending Tweet Topics</button>';
+    content +=  '<div class="alert alert-info" role="alert" id="tweetCount_' + marker.id + '">' + 
+                '<strong>Tweet Count: </strong><span class="realtimeCount"> Loading...</span>' + 
+                '</div>'; 
   } else {
-    content +=  '<button type="button" class="btn btn-default" onclick="getTweetCount(\'' + marker.id + '\')">Get Tweet Count</button>' +
-                '<button type="button" class="btn btn-default" onclick="getTweetTrends(\'' + marker.id + '\')">Get Trending Tweet Topics</button>';
+    content +=  '<div class="btn-group" role="group" aria-label="...">' + 
+                  '<button type="button" class="btn btn-default" onclick="getTweetCount(\'' + marker.id + '\')">Get Tweet Count</button>' +
+                  '<button type="button" class="btn btn-default" onclick="getTweetTrends(\'' + marker.id + '\')">Get Trending Tweet Topics</button>' +
+                '</div>';
   }
-  content += '</div></div>';
+  content += '</div>';
   return content;
 };
 
@@ -240,35 +252,62 @@ socket.on('load marker', function(marker) {
     if (title) {
       generateMarker(UUID, title, position, radius, feature);
       map.setZoom(3);
-      map.panTo(markers[UUID].position); 
+      var marker = markers[UUID];
+      var container = containers[UUID];
+      map.panTo(marker.position); 
+      container.setPosition(marker.position);
+      container.open(map);
     } 
   });
 });
 
-var getTweetCount = function(markerUID) {
-  // TODO: make it the marker undraggable and uneditable
-  // Make button unclickable, and the other one clickable 
+// Load marker that already exists in the database
+socket.on('load twitter data', function(updatedMarkers) {
+  $.each(updatedMarkers, function( index, markerInfo ){
+    if (markers[markerInfo.id]) {
+      var marker = markers[markerInfo.id];
+      var circle = circles[markerInfo.id];
+      var container = containers[markerInfo.id];
+      var feature = markerInfo.feature;
+      var result;
+      if (feature === "trend") {
+        result = markerInfo.trends.join(", ");
+      } else {
+        result = markerInfo.count;
+      }
+      container.setContent(getInfoContainerContent(marker, circle, feature, result));
+    }
+  });
+});
+
+var getTweetCount = function(markerUID) { 
   var marker = markers[markerUID];
+  var circle = circles[markerUID];
+  var container = containers[markerUID];
+  marker.setDraggable(false);
+  circle.setEditable(false);
   var request = {};
-  request.type = "create";
   request.feature = "count";
   request.id = marker.id;
   request.lat = marker.position.lat();
   request.lon = marker.position.lng();
-  request.radius_km = Math.round(circles[marker.id].getRadius() / 1000);
+  request.radius_km = Math.round(circle.getRadius() / 1000);
+  container.setContent(getInfoContainerContent(marker, circle, request.feature));
   socket.emit('count request', request);
 };
 
 var getTweetTrends = function(markerUID) {
-  // TODO: make it the marker undraggable and uneditable
-  // Make button unclickable, and the other one clickable
   var marker = markers[markerUID];
+  var circle = circles[markerUID];
+  var container = containers[markerUID];
+  marker.setDraggable(false);
+  circle.setEditable(false);
   var request = {};
-  request.type = "create";
   request.feature = "trend";
   request.id = marker.id;
   request.lat = marker.position.lat();
   request.lon = marker.position.lng();
-  request.radius_km = Math.round(circles[marker.id].getRadius() / 1000);
+  request.radius_km = Math.round(circle.getRadius() / 1000);
+  container.setContent(getInfoContainerContent(marker, circle, request.feature));
   socket.emit('trend request', request);
 };

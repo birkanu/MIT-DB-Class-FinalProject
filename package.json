@@ -22,7 +22,9 @@
     "mongoose": "~3.8.19",
     "express-handlebars": "~1.1.0",
     "q": "^1.0.1",
-    "redis": "~0.12.1"
+    "redis": "~0.12.1",
+    "franz-kafka": "~0.7.5",
+    "kafka-node": "~0.2.12"
   },
   "engines": {
     "node": "0.10.x"

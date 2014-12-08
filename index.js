@@ -7,12 +7,25 @@ var express = require('express'),
     session = require('express-session'),
     passport = require('passport'),
     LocalStrategy = require('passport-local'),
-    redis = require('redis');
+    Redis = require('redis');
 
-var client = redis.createClient(6379, 'localhost', {})
-client.on("error", function (err) {
+var redis = Redis.createClient(6379, 'localhost', {})
+redis.on("error", function (err) {
     console.log("Redis Error: " + err);
 });
+
+var kafka = require('kafka-node'),
+    Consumer = kafka.Consumer,
+    client = new kafka.Client('localhost:2181'),
+    consumer = new Consumer(
+        client,
+        [
+            { topic: 'results-sample', partition: 0 }
+        ],
+        {
+            autoCommit: true
+        }
+    );
 
 var config = require('./config.js'), // config file contains all tokens and other private info
     funct = require('./functions.js'); // funct file contains our helper functions for our Passport and database work
@@ -142,13 +155,20 @@ var http = require('http').Server(app);
 http.listen(port);
 console.log("Listening on port: " + port);
 
+var writeMarkerToDB = function(request) {
+  var key = request.id;
+  var value = request.lat + "|" + request.lon + "|" + request.radius_km + "|" + request.feature;
+  redis.set(key, value, redis.print);
+  redis.sadd("fences", key, redis.print);
+}
+
 var io = require('socket.io')(http); 
 io.on('connection', function (socket) { 
   // Read the DB and Send Marker Info to the Client
-  client.smembers("fences", function(err, markerUIDs) {
+  redis.smembers("fences", function(err, markerUIDs) {
     if (markerUIDs != null && markerUIDs.length > 0) {
       markerUIDs.forEach(function (markerUID, i) {
-        client.get(markerUID, function(err, info) {
+        redis.get(markerUID, function(err, info) {
           var marker = {};
           var markerInfo = info.split('|');
           marker.lat = markerInfo[0];
@@ -161,10 +181,38 @@ io.on('connection', function (socket) {
       });
     }
   });
-  socket.on('count request', function(request){
-    console.log(request);
+  // Listen to topics from Kafka and send it to the database
+  consumer.on('message', function (data) {
+    if (data.value) {
+      var updates = JSON.parse(data.value);
+      var markerUpdates = [];
+      for (var markerUUID in updates) {
+        var update = updates[markerUUID];
+        var markerInfo = {}
+        markerInfo.id = markerUUID;
+        markerInfo.feature = update.feature;
+        if (markerInfo.feature === "trend") {
+          markerInfo.trends = update.trends;
+        }
+        if (markerInfo.feature === "count"){
+          markerInfo.count = update.count;
+        }
+        markerUpdates.push(markerInfo);
+      }
+      socket.emit('load twitter data', markerUpdates);
+    }
   });
-  socket.on('trend request', function(request){
-    console.log(request);
+  // Listen for marker removal requests
+  socket.on('remove marker request', function(markerUUID) {
+    redis.srem("fences", markerUUID, redis.print);
+    redis.del(markerUUID, redis.print);
+  })
+  // Add marker to database with the count option
+  socket.on('count request', function(request) {
+    writeMarkerToDB(request);
+  });
+  // Add marker to database with the trend option
+  socket.on('trend request', function(request) {
+    writeMarkerToDB(request);
   });
 });
