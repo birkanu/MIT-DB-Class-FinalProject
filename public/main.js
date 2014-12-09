@@ -5,6 +5,38 @@ var containers = {};
 var geocoder = new google.maps.Geocoder();
 var socket = io();
 
+// Special Info Window for Google Maps
+google.maps.InfoWindowZ = function(opts) {
+  var GM = google.maps,
+      GE = GM.event,
+      iw = new GM.InfoWindow(),
+      ce;   
+  if(!GM.InfoWindowZZ){
+    GM.InfoWindowZZ=Number(GM.Marker.MAX_ZINDEX);
+  }
+  GE.addListener(iw,'content_changed',function(){
+    if(typeof this.getContent()=='string'){
+      var n = document.createElement('div');
+          n.innerHTML = this.getContent();
+          this.setContent(n.firstChild);
+          return;
+    }
+    GE.addListener(this,'domready', function(){
+      var _this=this;
+      _this.setZIndex(++GM.InfoWindowZZ);
+      if(ce){
+        GM.event.removeListener(ce);
+      }
+      ce=GE.addDomListener(this.getContent().parentNode
+                        .parentNode,'mouseover',
+                        function(){
+                        _this.setZIndex(++GM.InfoWindowZZ);
+      });
+    })
+ }); 
+ if(opts)iw.setOptions(opts);
+ return iw;
+}
 
 // Generate a UUID for a marker.
 var getUUID = (function() {
@@ -64,21 +96,24 @@ var addMarkerToPlacesList = function(marker) {
 };
 
 // Generates content for the info container
-var getInfoContainerContent = function(marker, circle, feature, result) {
+//var getInfoContainerContent = function(marker, circle, feature, result) {
+var getInfoContainerContent = function(marker, circle, feature) {
   var content = '<div class="infoContainer" id="container_' + marker.id + '">' + 
                   '<p class="containerHeader">' + 
-                    '<span class="containerTitle">Place: ' + marker.title + ', </span>' + 
-                    '<span class="containerRadius"> Radius: ' + Math.round(circle.getRadius() / 1000) + ' km </span>' +
+                    '<span class="containerTitle" id="title_' + marker.id + '">Place: ' + marker.title + ', </span>' + 
+                    '<span class="containerRadius" id="radius_' + marker.id + '"> Radius: ' + Math.round(circle.getRadius() / 1000) + ' km </span>' +
                   '</p>';
-  if (feature === "trend" && result) {
-    content +=  '<div class="alert alert-info" role="alert" id="tweetTrends_' + marker.id + '">' + 
-                '<strong>Trending Tweet Topics: </strong><span class="realtimeTrends">' + ' ' + result + '</span>' + 
-                '</div>'; 
-  } else if (feature === "count" && result) {
-    content +=  '<div class="alert alert-info" role="alert" id="tweetCount_' + marker.id + '">' + 
-                '<strong>Tweet Count: </strong><span class="realtimeCount">' + ' ' + result + '</span>' + 
-                '</div>'; 
-  } else if (feature === "trend") {
+  // if (feature === "trend" && result) {
+  //   content +=  '<div class="alert alert-info" role="alert" id="tweetTrends_' + marker.id + '">' + 
+  //               '<strong>Trending Tweet Topics: </strong><span class="realtimeTrends">' + ' ' + result + '</span>' + 
+  //               '</div>'; 
+  // } else if (feature === "count" && result) {
+  //   content +=  '<div class="alert alert-info" role="alert" id="tweetCount_' + marker.id + '">' + 
+  //               '<strong>Tweet Count: </strong><span class="realtimeCount">' + ' ' + result + '</span>' + 
+  //               '</div>'; 
+  // } 
+  // else if (feature === "trend") {
+  if (feature === "trend") {
     content +=  '<div class="alert alert-info" role="alert" id="tweetTrends_' + marker.id + '">' + 
                 '<strong>Trending Tweet Topics: </strong><span class="realtimeTrends">Loading...</span>' + 
                 '</div>'; 
@@ -118,12 +153,14 @@ var drawCircleForMarker = function(marker, radius, feature) {
   var circle = new google.maps.Circle(circleOptions);
   circle.bindTo('center', marker, 'position');
   // Create info window for circle
-  var infoWindow = new google.maps.InfoWindow({
+  var infoWindow = new google.maps.InfoWindowZ({
     content:  getInfoContainerContent(marker, circle, feature)
   });
   google.maps.event.addListener(circle, 'click', function(ev){
-    infoWindow.setPosition(ev.latLng);
-    infoWindow.open(map);
+    if (circle.clickable) {
+      infoWindow.setPosition(ev.latLng);
+      infoWindow.open(map);
+    }
   });
   google.maps.event.addListener(circle, 'radius_changed', function(ev){
     var container = containers[marker.id];
@@ -194,6 +231,7 @@ var generateMarker = function(UUID, title, position, radius, feature) {
 
 // Initializes the map and listens for marker additions.
 var initialize = function() {
+  google.maps.visualRefresh = false;
   map = new google.maps.Map(document.getElementById('map-canvas'), {
     mapTypeId: google.maps.MapTypeId.ROADMAP,
     center: { lat: 0, lng: 0},
@@ -254,6 +292,8 @@ socket.on('load marker', function(marker) {
       map.setZoom(3);
       var marker = markers[UUID];
       var container = containers[UUID];
+      var circle = circles[marker.id];
+      circle.clickable = false;
       map.panTo(marker.position); 
       container.setPosition(marker.position);
       container.open(map);
@@ -265,17 +305,20 @@ socket.on('load marker', function(marker) {
 socket.on('load twitter data', function(updatedMarkers) {
   $.each(updatedMarkers, function( index, markerInfo ){
     if (markers[markerInfo.id]) {
-      var marker = markers[markerInfo.id];
-      var circle = circles[markerInfo.id];
-      var container = containers[markerInfo.id];
+      //var marker = markers[markerInfo.id];
+      //var circle = circles[markerInfo.id];
+      //var container = containers[markerInfo.id];
       var feature = markerInfo.feature;
       var result;
       if (feature === "trend") {
         result = markerInfo.trends.join(", ");
+        $("#tweetTrends_" + markerInfo.id + " .realtimeTrends").text(result);
       } else {
         result = markerInfo.count;
+        $("#tweetCount_" + markerInfo.id + " .realtimeCount").text(result);
       }
-      container.setContent(getInfoContainerContent(marker, circle, feature, result));
+      // INSTEAD OF CALLING THE GOOGLE API'S setContent method, I just change the DOM element with jQuery, but the user is unable to open the info container once they close it 
+      //container.setContent(getInfoContainerContent(marker, circle, feature, result));
     }
   });
 });
@@ -293,6 +336,7 @@ var getTweetCount = function(markerUID) {
   request.lon = marker.position.lng();
   request.radius_km = Math.round(circle.getRadius() / 1000);
   container.setContent(getInfoContainerContent(marker, circle, request.feature));
+  circle.clickable = false;
   socket.emit('count request', request);
 };
 
@@ -309,5 +353,6 @@ var getTweetTrends = function(markerUID) {
   request.lon = marker.position.lng();
   request.radius_km = Math.round(circle.getRadius() / 1000);
   container.setContent(getInfoContainerContent(marker, circle, request.feature));
+  circle.clickable = false;
   socket.emit('trend request', request);
 };
