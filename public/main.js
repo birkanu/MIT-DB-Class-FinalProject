@@ -73,6 +73,7 @@ var removeMarkerFromPlacesList = function(markerUUID) {
   if (Object.keys(markers).length === 0) {
     $('.marker-list').css('visibility', 'hidden');
     $('.deleteMarkersButton').css('visibility', 'hidden');
+    $('.hourlyCounterContainer').css('visibility', 'hidden');
   }
   var markerListElement = document.getElementById(markerUUID.trim());
   markerListElement.remove();
@@ -90,6 +91,7 @@ var addMarkerToPlacesList = function(marker) {
   if (Object.keys(markers).length !== 0) {
     $('.marker-list').css('visibility', 'visible');
     $('.deleteMarkersButton').css('visibility', 'visible');
+    $('.hourlyCounterContainer').css('visibility', 'visible');
   }
   $('.marker-list').append('<li class="list-group-item" id="' + marker.id + '">' + marker.title + 
     '<span class="glyphicon glyphicon-remove" onclick="removeMarkerFromPlacesList(\'' + marker.id + '\')"></span></li>');
@@ -298,6 +300,9 @@ socket.on('load marker', function(marker) {
 
 socket.on('load twitter data', function(updatedMarkers) {
   $.each(updatedMarkers, function( index, markerInfo ){
+    if (markerInfo.id === "total_tweet_count") {
+      $(".hourlyCounterContainer .hourlyCount").text(markerInfo.count);
+    }
     if (markers[markerInfo.id]) {
       var feature = markerInfo.feature;
       var result;
